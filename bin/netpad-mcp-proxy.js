@@ -62,13 +62,37 @@ if (options.reset) {
 // Configure if requested
 if (options.configure) {
   (async () => {
-    const responses = await prompts([
-      {
+    // Prompt for environment selection
+    const envResponse = await prompts({
+      type: 'select',
+      name: 'environment',
+      message: 'Which environment do you want to connect to?',
+      choices: [
+        { title: 'Production (NetPad SaaS)', value: 'production' },
+        { title: 'Development (Custom/Local)', value: 'development' }
+      ],
+      initial: config.get('netpadUrl') && config.get('netpadUrl').includes('localhost') ? 1 : 0
+    });
+
+    let netpadUrl = config.get('netpadUrl');
+    if (envResponse.environment === 'production') {
+      netpadUrl = 'https://api.netpad.ai';
+      console.log('\nℹ️  Production selected. The proxy will connect to the NetPad SaaS instance at https://api.netpad.ai.');
+      console.log('\u26a0\ufe0f  When using production, keep your API key secure. Do not share it or commit it to source control.');
+      console.log('   For best security, use a dedicated API key with the minimum required permissions.');
+    } else if (envResponse.environment === 'development') {
+      // Prompt for custom URL
+      const devUrlResponse = await prompts({
         type: 'text',
         name: 'netpadUrl',
-        message: 'NetPad Server URL:',
-        initial: config.get('netpadUrl')
-      },
+        message: 'Enter the URL of your local or custom NetPad server:',
+        initial: netpadUrl || 'http://localhost:3000'
+      });
+      netpadUrl = devUrlResponse.netpadUrl;
+    }
+
+    // Prompt for API key and port
+    const responses = await prompts([
       {
         type: 'text',
         name: 'apiKey',
@@ -83,8 +107,8 @@ if (options.configure) {
       }
     ]);
 
-    if (responses.netpadUrl) {
-      config.set('netpadUrl', responses.netpadUrl);
+    if (netpadUrl) {
+      config.set('netpadUrl', netpadUrl);
     }
     if (responses.apiKey) {
       config.set('apiKey', responses.apiKey);
@@ -313,6 +337,32 @@ function handleProxyError(error, res) {
   
   // Check if this is an Axios error with a response
   if (error.response) {
+    // Enhanced error handling for authentication/network issues
+    if (error.response.status === 401 || error.response.status === 403) {
+      res.status(error.response.status).json({
+        success: false,
+        status: error.response.status,
+        message: 'Authentication failed: Invalid or missing API key. Please check your API key and permissions.',
+        error: {
+          code: 'AUTH_ERROR',
+          details: error.response.data,
+          suggestion: 'Re-run `netpad-mcp-proxy --configure` to update your API key, or generate a new one in the NetPad UI.'
+        }
+      });
+      return;
+    }
+    if (error.response.status === 404) {
+      res.status(404).json({
+        success: false,
+        status: 404,
+        message: 'The requested resource was not found on the NetPad server.',
+        error: {
+          code: 'NOT_FOUND',
+          details: error.response.data
+        }
+      });
+      return;
+    }
     // Return the error response from the actual API
     res.status(error.response.status).json(error.response.data);
   } else {
@@ -320,11 +370,12 @@ function handleProxyError(error, res) {
     res.status(502).json({
       success: false,
       status: 502,
-      message: 'Proxy Error',
+      message: 'Proxy Error: Could not connect to the NetPad server.',
       error: {
         code: 'NETPAD_CONNECTION_ERROR',
         message: `Could not connect to NetPad at ${config.get('netpadUrl')}`,
-        details: error.message
+        details: error.message,
+        suggestion: 'Check your internet connection, firewall settings, and ensure the NetPad server URL is correct. If using SaaS, verify https://api.netpad.ai is reachable.'
       }
     });
   }

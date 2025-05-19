@@ -50,11 +50,24 @@ You can configure the proxy server interactively:
 netpad-mcp-proxy --configure
 ```
 
+During configuration, you will be prompted to select an environment:
+- **Production (NetPad SaaS):** Connects to the official NetPad cloud service at https://api.netpad.ai
+- **Development (Custom/Local):** Allows you to specify a custom or local NetPad server URL
+
 Or reset the configuration:
 
 ```bash
 netpad-mcp-proxy --reset
 ```
+
+## Production Usage
+
+When using the proxy with the NetPad SaaS (production) environment:
+- The proxy will connect to `https://api.netpad.ai` by default.
+- **Keep your API key secure!** Do not share it or commit it to source control.
+- For best security, use a dedicated API key with the minimum required permissions for your use case.
+- If you encounter authentication errors, re-run `netpad-mcp-proxy --configure` to update your API key, or generate a new one in the NetPad UI.
+- If you have connectivity issues, ensure your network allows outbound HTTPS connections to `api.netpad.ai`.
 
 ## Integrating with Cursor
 
@@ -134,4 +147,4 @@ await reset();
 
 ## License
 
-MIT# netpad-mcp-proxy
+MIT
