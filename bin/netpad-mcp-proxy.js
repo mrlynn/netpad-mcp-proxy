@@ -180,15 +180,22 @@ async function startServer() {
   });
 
   // MCP root endpoint
-  app.get('/', async (req, res) => {
-    try {
-      const response = await axios.get(`${netpadUrl}/api/mcp`, {
-        headers: { 'x-api-key': config.get('apiKey') }
-      });
-      res.json(response.data);
-    } catch (error) {
-      handleProxyError(error, res);
-    }
+  app.get('/', (req, res) => {
+    res.json({
+      name: "NetPad MCP Proxy",
+      version: "1.0.0",
+      description: "NetPad MCP proxy server for code assistant integration",
+      toolsPath: "/tools?schema=true",
+      commandPath: "/command"
+    });
+  });
+
+  app.post('/', (req, res) => {
+    res.status(405).json({
+      success: false,
+      status: 405,
+      message: "POST not supported on root endpoint"
+    });
   });
 
   // Tools endpoint
