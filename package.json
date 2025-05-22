@@ -1,6 +1,6 @@
 {
   "name": "netpad-mcp-proxy",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP proxy server for NetPad integration with code assistants like Cursor",
   "main": "index.js",
   "bin": {
