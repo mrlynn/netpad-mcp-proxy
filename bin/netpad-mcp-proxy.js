@@ -179,6 +179,38 @@ async function startServer() {
     next();
   });
 
+  // SSE endpoint (works locally, returns 501 on Vercel)
+  const isVercel = !!process.env.VERCEL;
+  if (!isVercel) {
+    app.get('/sse', (req, res) => {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+
+      // Send a comment to keep the connection open
+      res.write(': connected\n\n');
+
+      // Keep-alive every 30 seconds
+      const keepAlive = setInterval(() => {
+        res.write(': keep-alive\n\n');
+      }, 30000);
+
+      req.on('close', () => {
+        clearInterval(keepAlive);
+        res.end();
+      });
+    });
+  } else {
+    app.get('/sse', (req, res) => {
+      res.status(501).json({
+        success: false,
+        status: 501,
+        message: 'SSE not supported on Vercel/serverless'
+      });
+    });
+  }
+
   // MCP root endpoint
   app.get('/', (req, res) => {
     res.json({
